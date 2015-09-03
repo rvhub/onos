@@ -16,3 +16,4 @@ dependency-reduced-pom.xml
 core/store/trivial/data/
 core/store/apps
 /bin/
+/tools/test/cells/mgmt
