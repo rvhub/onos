@@ -1,6 +1,0 @@
-# Software Defined Software via Software Defined Management
-
-export ONOS_NIC="192.91.245.*"
-export OC1="192.91.245.17"
-
-export ONOS_APPS="drivers,openflow,fwd,proxyarp,null"
