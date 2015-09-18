@@ -95,8 +95,7 @@ public class TenantNetworkWebResource extends AbstractWebResource {
         while (networkors.hasNext()) {
             TenantNetwork network = networkors.next();
             if ((queryId == null || queryId.equals(network.id().toString()))
-                    && (queryName == null || queryName.equals(network.name()
-                            .toString()))
+                    && (queryName == null || queryName.equals(network.name()))
                     && (queryadminStateUp == null || queryadminStateUp
                             .equals(network.adminStateUp()))
                     && (querystate == null || querystate.equals(network.state()
@@ -241,7 +240,7 @@ public class TenantNetworkWebResource extends AbstractWebResource {
     @Path("{id}")
     public Response deleteNetworks(@PathParam("id") String id) {
         log.debug("Deletes network by identifier {}.", id);
-        Set<TenantNetworkId> networkSet = new HashSet<TenantNetworkId>();
+        Set<TenantNetworkId> networkSet = new HashSet<>();
         networkSet.add(TenantNetworkId.networkId(id));
         Boolean issuccess = nullIsNotFound(get(TenantNetworkService.class)
                 .removeNetworks(networkSet), NETWORK_NOT_FOUND);

@@ -63,6 +63,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 @Path("subnets")
 public class SubnetWebResource extends AbstractWebResource {
@@ -148,7 +149,7 @@ public class SubnetWebResource extends AbstractWebResource {
             throws IOException {
         try {
             SubnetId subId = SubnetId.subnetId(id);
-            Set<SubnetId> subIds = new HashSet<SubnetId>();
+            Set<SubnetId> subIds = new HashSet<>();
             subIds.add(subId);
             get(SubnetService.class).removeSubnets(subIds);
             return Response.status(201).entity("SUCCESS").build();
@@ -182,7 +183,7 @@ public class SubnetWebResource extends AbstractWebResource {
      */
     public Iterable<Subnet> changeJsonToSubs(JsonNode subnetNodes) {
         checkNotNull(subnetNodes, JSON_NOT_NULL);
-        Map<SubnetId, Subnet> subMap = new HashMap<SubnetId, Subnet>();
+        Map<SubnetId, Subnet> subMap = new HashMap<>();
         for (JsonNode subnetNode : subnetNodes) {
             if (!subnetNode.hasNonNull("id")) {
                 return null;
@@ -211,8 +212,8 @@ public class SubnetWebResource extends AbstractWebResource {
             Subnet subnet = new DefaultSubnet(id, subnetName, networkId,
                                               tenantId, ipVersion, cidr,
                                               gatewayIp, dhcpEnabled, shared,
-                                              hostRoutesIt, ipV6AddressMode,
-                                              ipV6RaMode, allocationPoolsIt);
+                                              Sets.newHashSet(hostRoutesIt), ipV6AddressMode,
+                                              ipV6RaMode, Sets.newHashSet(allocationPoolsIt));
             subMap.put(id, subnet);
         }
         return Collections.unmodifiableCollection(subMap.values());
@@ -228,7 +229,7 @@ public class SubnetWebResource extends AbstractWebResource {
         checkNotNull(subnetNodes, JSON_NOT_NULL);
         checkArgument(subnetNodes.get("enable_dhcp").isBoolean(), "enable_dhcp should be boolean");
         checkArgument(subnetNodes.get("shared").isBoolean(), "shared should be boolean");
-        Map<SubnetId, Subnet> subMap = new HashMap<SubnetId, Subnet>();
+        Map<SubnetId, Subnet> subMap = new HashMap<>();
         if (!subnetNodes.hasNonNull("id")) {
             return null;
         }
@@ -267,9 +268,9 @@ public class SubnetWebResource extends AbstractWebResource {
 
         Subnet subnet = new DefaultSubnet(id, subnetName, networkId, tenantId,
                                           ipVersion, cidr, gatewayIp,
-                                          dhcpEnabled, shared, hostRoutesIt,
+                                          dhcpEnabled, shared, Sets.newHashSet(hostRoutesIt),
                                           ipV6AddressMode, ipV6RaMode,
-                                          allocationPoolsIt);
+                                          Sets.newHashSet(allocationPoolsIt));
         subMap.put(id, subnet);
         return Collections.unmodifiableCollection(subMap.values());
     }
