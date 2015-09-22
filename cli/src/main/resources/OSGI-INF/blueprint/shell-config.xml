@@ -331,9 +331,6 @@
             </completers>
         </command>
         <command>
-            <action class="org.onosproject.cli.net.AddressBindingsListCommand"/>
-        </command>
-        <command>
             <action class="org.onosproject.cli.net.InterfacesListCommand"/>
         </command>
 
@@ -351,6 +348,13 @@
                 <ref component-id="flowRuleStatusCompleter"/>
                 <ref component-id="deviceIdCompleter"/>
             </completers>
+        </command>
+
+        <command>
+            <action class="org.onosproject.cli.net.PacketRequestsListCommand"/>
+        </command>
+        <command>
+            <action class="org.onosproject.cli.net.PacketProcessorsListCommand"/>
         </command>
 
         <command>
