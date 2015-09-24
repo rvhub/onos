@@ -58,6 +58,10 @@
         <module>vtnweb</module>
         <module>dhcp</module>
         <module>cordvtn</module>
+        <module>mfwd</module>
+        <module>igmp</module>
+        <module>pim</module>
+        <module>mcast</module>
   </modules>
 
     <properties>
