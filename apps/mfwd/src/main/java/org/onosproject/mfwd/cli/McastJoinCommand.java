@@ -17,9 +17,9 @@ package org.onosproject.mfwd.cli;
 
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
-import org.onlab.packet.IpPrefix;
 import org.onosproject.cli.AbstractShellCommand;
 
+import org.onosproject.mfwd.impl.McastConnectPoint;
 import org.onosproject.mfwd.impl.McastRouteBase;
 import org.onosproject.mfwd.impl.McastRouteTable;
 
@@ -53,44 +53,19 @@ public class McastJoinCommand extends AbstractShellCommand {
     @Override
     protected void execute() {
         McastRouteTable mrib = McastRouteTable.getInstance();
-        IpPrefix mcast = IpPrefix.valueOf("224.0.0.0/4");
-        IpPrefix saddr = IpPrefix.valueOf(sAddr);
-        if (mcast.contains(saddr)) {
-            print("Error: the source address " + sAddr + " must be an IPv4 unicast address");
-            return;
-        }
-
-        IpPrefix gaddr = IpPrefix.valueOf(gAddr);
-        if (!mcast.contains(gaddr)) {
-            print("Error: " + gAddr + " must be a multicast group address");
-            return;
-        }
-
         McastRouteBase mr = mrib.addRoute(sAddr, gAddr);
-        if (mr == null) {
-            print("Error: unable to save the multicast state");
-            return;
-        }
 
         // Port format "of:0000000000000023/4"
         if (ingressPort != null) {
             String inCP = ingressPort;
             log.debug("Ingress port provided: " + inCP);
-            String [] cp = inCP.split("/");
-            mr.addIngressPoint(cp[0], Long.parseLong(cp[1]));
-        } else {
-            return;
-        }
-
-        if (ports == null) {
-            return;
+            mr.addIngressPoint(inCP);
         }
 
         for (int i = 0; i < ports.length; i++) {
             String egCP = ports[i];
             log.debug("Egress port provided: " + egCP);
-            String [] cp = egCP.split("/");
-            mr.addEgressPoint(cp[0], Long.parseLong(cp[1]));
+            mr.addEgressPoint(egCP, McastConnectPoint.JoinSource.STATIC);
         }
         print("Added the mcast route");
     }

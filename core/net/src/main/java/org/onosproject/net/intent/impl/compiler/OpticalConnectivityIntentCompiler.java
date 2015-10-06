@@ -16,9 +16,7 @@
 package org.onosproject.net.intent.impl.compiler;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
@@ -40,9 +38,9 @@ import org.onosproject.net.intent.IntentExtensionService;
 import org.onosproject.net.intent.OpticalConnectivityIntent;
 import org.onosproject.net.intent.OpticalPathIntent;
 import org.onosproject.net.intent.impl.IntentCompilationException;
-import org.onosproject.net.resource.ResourceAllocation;
+import org.onosproject.net.newresource.ResourcePath;
+import org.onosproject.net.newresource.ResourceService;
 import org.onosproject.net.resource.ResourceType;
-import org.onosproject.net.resource.device.DeviceResourceService;
 import org.onosproject.net.resource.link.DefaultLinkResourceRequest;
 import org.onosproject.net.resource.link.LambdaResource;
 import org.onosproject.net.resource.link.LambdaResourceAllocation;
@@ -57,13 +55,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * An intent compiler for {@link org.onosproject.net.intent.OpticalConnectivityIntent}.
  */
-@Component(immediate = true)
+// For now, remove component designation until dependency on the new resource manager is available.
+// @Component(immediate = true)
 public class OpticalConnectivityIntentCompiler implements IntentCompiler<OpticalConnectivityIntent> {
 
     protected static final Logger log = LoggerFactory.getLogger(OpticalConnectivityIntentCompiler.class);
@@ -78,10 +78,10 @@ public class OpticalConnectivityIntentCompiler implements IntentCompiler<Optical
     protected DeviceService deviceService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected LinkResourceService linkResourceService;
+    protected ResourceService resourceService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected DeviceResourceService deviceResourceService;
+    protected LinkResourceService linkResourceService;
 
     @Activate
     public void activate() {
@@ -108,7 +108,11 @@ public class OpticalConnectivityIntentCompiler implements IntentCompiler<Optical
         log.debug("Compiling optical connectivity intent between {} and {}", src, dst);
 
         // Reserve OCh ports
-        if (!deviceResourceService.requestPorts(ImmutableSet.of(srcPort, dstPort), intent)) {
+        ResourcePath srcPortPath = new ResourcePath(src.deviceId(), src.port());
+        ResourcePath dstPortPath = new ResourcePath(dst.deviceId(), dst.port());
+        List<org.onosproject.net.newresource.ResourceAllocation> allocation =
+                resourceService.allocate(intent.id(), srcPortPath, dstPortPath);
+        if (allocation.isEmpty()) {
             throw new IntentCompilationException("Unable to reserve ports for intent " + intent);
         }
 
@@ -161,7 +165,7 @@ public class OpticalConnectivityIntentCompiler implements IntentCompiler<Optical
         }
 
         // Release port allocations if unsuccessful
-        deviceResourceService.releasePorts(intent.id());
+        resourceService.release(intent.id());
 
         throw new IntentCompilationException("Unable to find suitable lightpath for intent " + intent);
     }
@@ -174,15 +178,12 @@ public class OpticalConnectivityIntentCompiler implements IntentCompiler<Optical
      * @return lambda allocated to the given path
      */
     private LambdaResourceAllocation getWavelength(Path path, LinkResourceAllocations linkAllocs) {
-        for (Link link : path.links()) {
-            for (ResourceAllocation alloc : linkAllocs.getResourceAllocation(link)) {
-                if (alloc.type() == ResourceType.LAMBDA) {
-                    return (LambdaResourceAllocation) alloc;
-                }
-            }
-        }
-
-        return null;
+        return path.links().stream()
+                .flatMap(x -> linkAllocs.getResourceAllocation(x).stream())
+                .filter(x -> x.type() == ResourceType.LAMBDA)
+                .findFirst()
+                .map(x -> (LambdaResourceAllocation) x)
+                .orElse(null);
     }
 
     /**
@@ -215,23 +216,23 @@ public class OpticalConnectivityIntentCompiler implements IntentCompiler<Optical
             return false;
         }
 
-        LambdaResource lambda = null;
+        List<LambdaResource> lambdas = path.links().stream()
+                .flatMap(x -> allocations.getResourceAllocation(x).stream())
+                .filter(x -> x.type() == ResourceType.LAMBDA)
+                .map(x -> ((LambdaResourceAllocation) x).lambda())
+                .collect(Collectors.toList());
 
-        for (Link link : path.links()) {
-            for (ResourceAllocation alloc : allocations.getResourceAllocation(link)) {
-                if (alloc.type() == ResourceType.LAMBDA) {
-                    LambdaResource nextLambda = ((LambdaResourceAllocation) alloc).lambda();
-                    if (nextLambda == null) {
-                        return false;
-                    }
-                    if (lambda == null) {
-                        lambda = nextLambda;
-                        continue;
-                    }
-                    if (!lambda.equals(nextLambda)) {
-                        return false;
-                    }
-                }
+        LambdaResource lambda = null;
+        for (LambdaResource nextLambda: lambdas) {
+            if (nextLambda == null) {
+                return false;
+            }
+            if (lambda == null) {
+                lambda = nextLambda;
+                continue;
+            }
+            if (!lambda.equals(nextLambda)) {
+                return false;
             }
         }
 

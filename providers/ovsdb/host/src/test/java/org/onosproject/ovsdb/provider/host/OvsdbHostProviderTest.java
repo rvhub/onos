@@ -24,7 +24,9 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.onlab.packet.IpAddress;
 import org.onlab.packet.MacAddress;
+import org.onlab.packet.TpPort;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.HostId;
 import org.onosproject.net.host.HostDescription;
@@ -159,6 +161,11 @@ public class OvsdbHostProviderTest {
             removeCount++;
         }
 
+        @Override
+        public void removeIpFromHost(HostId hostId, IpAddress ipAddress) {
+
+        }
+
     }
 
     private class OvsdbControllerTest implements OvsdbController {
@@ -194,6 +201,11 @@ public class OvsdbHostProviderTest {
         @Override
         public OvsdbClientService getOvsdbClient(OvsdbNodeId nodeId) {
             return null;
+        }
+
+        @Override
+        public void connect(IpAddress ip, TpPort port) {
+
         }
     }
 }

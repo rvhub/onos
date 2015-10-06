@@ -27,6 +27,7 @@ import static org.onosproject.store.service.EventuallyConsistentMapEvent.Type.RE
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -67,7 +68,6 @@ import org.onosproject.store.service.StorageService;
 import org.slf4j.Logger;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
@@ -197,6 +197,35 @@ public class ECHostStore
     }
 
     @Override
+    public HostEvent removeIp(HostId hostId, IpAddress ipAddress) {
+        DefaultHost host = hosts.compute(hostId, (id, existingHost) -> {
+            if (existingHost != null) {
+                checkState(Objects.equals(hostId.mac(), existingHost.mac()),
+                        "Existing and new MAC addresses differ.");
+                checkState(Objects.equals(hostId.vlanId(), existingHost.vlan()),
+                        "Existing and new VLANs differ.");
+
+                Set<IpAddress> addresses = existingHost.ipAddresses();
+                if (addresses != null && addresses.contains(ipAddress)) {
+                    addresses = new HashSet<>(existingHost.ipAddresses());
+                    addresses.remove(ipAddress);
+                    return new DefaultHost(existingHost.providerId(),
+                            hostId,
+                            existingHost.mac(),
+                            existingHost.vlan(),
+                            existingHost.location(),
+                            ImmutableSet.copyOf(addresses),
+                            existingHost.annotations());
+                } else {
+                    return existingHost;
+                }
+            }
+            return null;
+        });
+        return host != null ? new HostEvent(HOST_UPDATED, host) : null;
+    }
+
+    @Override
     public int getHostCount() {
         return hosts.size();
     }
@@ -228,17 +257,23 @@ public class ECHostStore
 
     @Override
     public Set<Host> getConnectedHosts(ConnectPoint connectPoint) {
-        return ImmutableSet.copyOf(locations.get(connectPoint));
+        synchronized (locations) {
+            return ImmutableSet.copyOf(locations.get(connectPoint));
+        }
     }
 
     @Override
     public Set<Host> getConnectedHosts(DeviceId deviceId) {
-        return ImmutableMultimap.copyOf(locations)
-                .entries()
-                .stream()
-                .filter(entry -> entry.getKey().deviceId().equals(deviceId))
-                .map(entry -> entry.getValue())
-                .collect(Collectors.toSet());
+        Set<Host> filtered;
+        synchronized (locations) {
+            filtered = locations
+                    .entries()
+                    .stream()
+                    .filter(entry -> entry.getKey().deviceId().equals(deviceId))
+                    .map(entry -> entry.getValue())
+                    .collect(Collectors.toSet());
+        }
+        return ImmutableSet.copyOf(filtered);
     }
 
     private Set<Host> filter(Collection<DefaultHost> collection, Predicate<DefaultHost> predicate) {
